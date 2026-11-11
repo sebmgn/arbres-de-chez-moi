@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Les arbres de chez moi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+/* Une carte de randonnée : papier, forêts en aplat vert, courbes de niveau, sentier balisé rouge et blanc. Une seule ambiance, claire. */
+:root{
+  color-scheme:light;
+  --carte:#f1eddc; --papier:#fbf9f0; --encre:#1b2a21; --encre2:#52605a; --ligne:#ddd6bd;
+  --foret:#cfe2b3; --vert:#1f6a3c; --vert2:#e4efd2; --gr:#d6362b; --pr:#f0b40f; --eau:#2a78ad; --courbe:#d9a873;
+  --f-d:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif; --f-b:"Instrument Sans",system-ui,sans-serif; --f-c:"Instrument Serif",Georgia,serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--carte);color:var(--encre);font:16px/1.5 var(--f-b);-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;cursor:pointer}
+img{max-width:100%}
+h1,h2,h3{font-family:var(--f-d);line-height:1.1;margin:0;text-wrap:balance}
+:focus-visible{outline:3px solid var(--eau);outline-offset:2px}
+#app{height:100%;display:grid;grid-template-rows:auto 1fr auto;max-width:760px;margin:0 auto;background:var(--papier);box-shadow:0 0 0 1px var(--ligne)}
+.top{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--ligne)}
+.brand{display:flex;align-items:center;gap:10px;font:800 clamp(.92rem,4vw,1.06rem) var(--f-d);letter-spacing:-.01em;margin-right:auto;white-space:nowrap;min-width:0}
+.blaze{display:inline-grid;width:22px;border-radius:3px;overflow:hidden;box-shadow:0 0 0 1px rgba(0,0,0,.25);flex:0 0 auto}
+.blaze i{display:block;height:7px;background:#fff}.blaze i+i{background:var(--gr)}
+.blaze.no{width:24px;height:24px;box-shadow:none;position:relative;border-radius:0;overflow:visible}
+.blaze.no i{position:absolute;left:-2px;right:-2px;top:9px;height:6px;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
+.blaze.no i:first-child{transform:rotate(45deg);background:#fff}.blaze.no i+i{transform:rotate(-45deg);background:var(--gr)}
+.pill{display:inline-flex;align-items:center;gap:6px;font:700 .86rem var(--f-b);padding:5px 10px;border-radius:999px;background:var(--vert2);color:var(--vert);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pill.j{background:#fdeebd;color:#7a5600}
+.icon{border:1px solid var(--ligne);background:#fff;border-radius:999px;width:34px;height:34px;display:grid;place-items:center;padding:0}
+main{overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.pad{padding:18px 16px 28px}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--ligne);background:#fff}
+.tabs button{border:0;background:none;padding:9px 4px 10px;font:600 .8rem var(--f-b);color:var(--encre2);display:grid;justify-items:center;gap:3px}
+.tabs button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tabs button[aria-current="page"]{color:var(--vert)}
+.tabs button[aria-current="page"] svg{stroke-width:2.4}
+
+/* boutons */
+.btn{border:0;border-radius:14px;padding:13px 18px;font:700 1rem var(--f-b);background:var(--vert);color:#fff;box-shadow:0 3px 0 #134726;transition:transform .06s}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #134726}
+.btn.sec{background:#fff;color:var(--encre);box-shadow:0 3px 0 var(--ligne);border:1px solid var(--ligne)}
+.btn.red{background:var(--gr);box-shadow:0 3px 0 #8f1f18}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.wide{width:100%}
+.lnk{border:0;background:none;color:var(--vert);font-weight:600;text-decoration:underline;padding:4px 0}
+.mut{color:var(--encre2)} .sm{font-size:.88rem}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1px solid var(--ligne);background:#fff;border-radius:999px;padding:6px 13px;font:600 .88rem var(--f-b);color:var(--encre2)}
+.chip[aria-pressed="true"]{background:var(--encre);color:#fff;border-color:var(--encre)}
+
+/* sentier */
+.rank{display:grid;grid-template-columns:1fr auto;gap:6px 14px;align-items:end;padding:16px 16px 12px}
+.rank h1{font-size:clamp(1.5rem,5vw,2rem);font-weight:800;letter-spacing:-.02em}
+.rank .lbl{font:italic 1.05rem var(--f-c);color:var(--encre2)}
+.xpbar{grid-column:1/-1;height:10px;border-radius:99px;background:var(--vert2);overflow:hidden}
+.xpbar i{display:block;height:100%;background:var(--vert);border-radius:99px}
+.revise{margin:0 16px 12px;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:#fdf3cf;border:1px solid #ecd78a}
+.revise b{font-family:var(--f-d)} .revise .btn{margin-left:auto;padding:9px 14px;background:var(--pr);color:#3d2c00;box-shadow:0 3px 0 #b78600}
+.map{position:relative;max-width:520px;margin:0 auto}
+.map svg{display:block;width:100%;height:auto}
+.node{position:absolute;transform:translate(-50%,-50%);width:15.5%;aspect-ratio:1;border-radius:50%;border:4px solid #fff;background:var(--gr);color:#fff;font:800 clamp(1rem,4.6vw,1.5rem) var(--f-d);box-shadow:0 4px 0 rgba(0,0,0,.22),0 0 0 2px var(--encre);display:grid;place-items:center;padding:0}
+.node.done{background:var(--vert)} .node.lock{background:#b9b6a6;box-shadow:0 4px 0 rgba(0,0,0,.15),0 0 0 2px #8d8a7c}
+.node.cur::after{content:"";position:absolute;inset:-12px;border-radius:50%;border:3px solid var(--gr);animation:pulse 1.6s ease-out infinite}
+@keyframes pulse{from{transform:scale(.8);opacity:.9}to{transform:scale(1.25);opacity:0}}
+.nlab{position:absolute;transform:translateY(-50%);width:44%;pointer-events:none}
+.nlab.l{text-align:right}
+.nlab b{display:block;font:800 clamp(.95rem,3.9vw,1.2rem)/1.1 var(--f-d);letter-spacing:-.01em}
+.nlab span{font:italic clamp(.85rem,3.4vw,1rem)/1.15 var(--f-c);color:var(--encre2)}
+.stars{display:inline-flex;gap:2px;vertical-align:middle}
+.stars svg{width:15px;height:15px;fill:#d9d4c0}.stars svg.on{fill:var(--pr);stroke:#a87b00;stroke-width:1}
+
+/* cartes de jeux */
+.h{font:800 1.5rem var(--f-d);letter-spacing:-.02em;margin:0 0 4px}
+.sub{color:var(--encre2);margin:0 0 16px;max-width:60ch}
+.games{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.game{position:relative;text-align:left;border:1px solid var(--ligne);background:#fff;border-radius:16px;padding:14px 14px 12px;display:grid;gap:4px;box-shadow:0 3px 0 var(--ligne)}
+.game:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ligne)}
+.game .gi{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;margin-bottom:4px}
+.game .gi svg{width:26px;height:26px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.game b{font:800 1.1rem var(--f-d)} .game p{margin:0;color:var(--encre2);font-size:.9rem}
+.game .best{font:600 .78rem var(--f-b);color:var(--vert);margin-top:4px}
+.game[disabled]{opacity:.5}
+
+/* herbier */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px;margin-top:14px}
+.tile{border:1px solid var(--ligne);background:#fff;border-radius:14px;padding:6px 6px 8px;text-align:left;display:grid;gap:5px}
+.tile .th{aspect-ratio:1;border-radius:9px;overflow:hidden;background:var(--vert2);position:relative}
+.tile img{width:100%;height:100%;object-fit:cover;display:block}
+.tile.new img{filter:grayscale(1) blur(5px) brightness(1.1);opacity:.55}
+.tile.new .th::after{content:"?";position:absolute;inset:0;display:grid;place-items:center;font:800 2rem var(--f-d);color:var(--encre2)}
+.tile b{font:700 .84rem/1.15 var(--f-b)} .tile.new b{color:var(--encre2)}
+.pips{display:flex;gap:3px}.pips i{width:100%;height:5px;border-radius:9px;background:var(--ligne)}.pips i.on{background:var(--vert)}
+
+/* fiche (feuille modale) */
+#sheet{position:fixed;inset:0;z-index:40;background:rgba(20,30,24,.45);display:flex;align-items:flex-end;justify-content:center}
+#sheet[hidden],#play[hidden]{display:none}
+.sheet{background:var(--papier);width:100%;max-width:760px;max-height:92%;overflow-y:auto;border-radius:22px 22px 0 0;padding:16px 16px 26px;animation:up .22s ease-out}
+@keyframes up{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+.shead{display:flex;gap:12px;align-items:flex-start;margin-bottom:10px}
+.shead h2{font-size:1.6rem;font-weight:800;letter-spacing:-.02em}
+.shead .lat{font:italic 1.1rem var(--f-c);color:var(--encre2)}
+.shead .icon{margin-left:auto;flex:0 0 auto}
+.quad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.quad figure{margin:0;position:relative;border-radius:12px;overflow:hidden;background:#efece0;aspect-ratio:1}
+.quad img,.quad svg{width:100%;height:100%;object-fit:cover;display:block}
+.quad .barkbox{width:100%;height:100%}
+.quad figcaption,.tagk{position:absolute;left:6px;bottom:6px;font:700 .68rem var(--f-b);letter-spacing:.06em;text-transform:uppercase;background:rgba(255,255,255,.92);padding:2px 7px;border-radius:99px}
+.cle{display:flex;gap:10px;align-items:flex-start;background:var(--vert2);border-radius:12px;padding:11px 13px;margin:12px 0;font-weight:600}
+.cle .blaze{margin-top:4px}
+.sheet h3{font:700 .76rem var(--f-b);letter-spacing:.1em;text-transform:uppercase;color:var(--gr);margin:14px 0 4px}
+.sheet ul{margin:0;padding-left:1.1em}.sheet p{margin:0 0 6px}
+.memo{background:#fdf3cf;border-left:4px solid var(--pr);border-radius:8px;padding:9px 12px}
+.cred{font-size:.74rem;color:var(--encre2);margin-top:12px}.cred a{color:inherit}
+
+/* partie */
+#play{position:fixed;inset:0;z-index:30;background:var(--papier);display:flex;justify-content:center}
+.pwrap{width:100%;max-width:640px;display:flex;flex-direction:column;height:100%}
+.phead{display:flex;align-items:center;gap:12px;padding:12px 16px}
+.pbar{flex:1;display:flex;gap:4px}.pbar i{flex:1;height:8px;border-radius:9px;background:var(--ligne)}
+.pbar i.ok{background:var(--vert)}.pbar i.ko{background:var(--gr)}.pbar i.cur{background:var(--encre)}
+.combo{font:800 .95rem var(--f-d);color:var(--gr);min-width:2.2em;text-align:right}
+.pbody{flex:1;overflow-y:auto;padding:4px 16px 18px;display:flex;flex-direction:column;gap:12px}
+.kick{font:700 .74rem var(--f-b);letter-spacing:.12em;text-transform:uppercase;color:var(--gr)}
+.prompt{font-size:clamp(1.3rem,5vw,1.7rem);font-weight:800;letter-spacing:-.02em}
+.prompt em{font-style:normal;color:var(--vert);text-decoration:underline;text-decoration-color:var(--pr);text-decoration-thickness:4px;text-underline-offset:3px}
+.qimg{position:relative;border-radius:16px;overflow:hidden;background:#efece0;height:min(40vh,330px);flex:0 0 auto}
+.qimg img{width:100%;height:100%;object-fit:cover;display:block}
+.qimg.draw{display:grid;place-items:center;padding:10px}.qimg.draw svg{height:100%;width:auto;max-width:100%}
+.qimg.blur img{filter:blur(26px);transform:scale(1.25);transition:filter 9s linear,transform 9s linear}
+.qimg.blur.go img,.qimg.blur.end img{filter:none;transform:none}.qimg.blur.end img{transition:none}
+.tbar{height:6px;border-radius:9px;background:var(--ligne);overflow:hidden}.tbar i{display:block;height:100%;background:var(--pr);width:100%}
+.quote{font:italic clamp(1.25rem,5vw,1.6rem)/1.25 var(--f-c);background:var(--vert2);border-radius:16px;padding:18px 18px;margin:0}
+.opts{display:grid;gap:9px}
+.opts.grid{grid-template-columns:1fr 1fr}
+.opt{border:2px solid var(--ligne);background:#fff;border-radius:14px;padding:13px 14px;font:600 1.02rem var(--f-b);text-align:left;box-shadow:0 3px 0 var(--ligne);position:relative;overflow:hidden}
+.opt:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ligne)}
+.opts.grid .opt{padding:0;aspect-ratio:1.15}
+.opts.grid .opt img{width:100%;height:100%;object-fit:cover;display:block}
+.opt .cap{position:absolute;left:0;right:0;bottom:0;background:rgba(255,255,255,.93);font:700 .82rem var(--f-b);padding:4px 8px;display:none}
+.opts.done .opt .cap{display:block}
+.opts.done .opt{pointer-events:none;box-shadow:none}
+.opt.ok{border-color:var(--vert);background:#e3f1dc}.opt.ko{border-color:var(--gr);background:#fbe3df}
+.opts.grid .opt.ok{outline:4px solid var(--vert)}.opts.grid .opt.ko{outline:4px solid var(--gr)}
+.opt.off{opacity:.4;pointer-events:none}
+.fb{border-top:1px solid var(--ligne);padding:14px 16px 18px;background:#fff;display:grid;gap:12px;animation:up .18s ease-out}
+.fb.ok{background:#eaf4e2}.fb.ko{background:#fcebe8}
+.fbrow{display:flex;gap:12px;align-items:flex-start}.fbrow .blaze{margin-top:5px}
+.fbrow b{font:800 1.1rem var(--f-d)}.fbrow p{margin:2px 0 0}
+.clues{display:grid;gap:8px;margin:0;padding:0;list-style:none;counter-reset:c}
+.clues li{background:var(--vert2);border-radius:12px;padding:10px 12px 10px 40px;position:relative;font-weight:500;animation:up .2s ease-out}
+.clues li::before{counter-increment:c;content:counter(c);position:absolute;left:10px;top:9px;width:22px;height:22px;border-radius:50%;background:var(--vert);color:#fff;font:700 .8rem var(--f-b);display:grid;place-items:center}
+.mem{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media (max-width:420px){.mem{grid-template-columns:repeat(3,1fr)}}
+.mc{aspect-ratio:1;border-radius:12px;border:0;padding:0;position:relative;background:var(--vert);box-shadow:0 3px 0 #134726;overflow:hidden}
+.mc img{width:100%;height:100%;object-fit:cover;display:none}
+.mc .bk{position:absolute;inset:0;display:grid;place-items:center}.mc .bk .blaze{width:30px}.mc .bk .blaze i{height:9px}
+.mc.up img{display:block}.mc.up .bk{display:none}.mc.up{box-shadow:none}
+.mc.got{outline:3px solid var(--pr)}.mc .cap{position:absolute;left:0;right:0;bottom:0;background:rgba(255,255,255,.93);font:700 .7rem var(--f-b);padding:2px 5px;display:none;text-align:left}.mc.got .cap{display:block}
+.big{font:800 clamp(3rem,16vw,5rem)/1 var(--f-d);letter-spacing:-.04em;color:var(--vert)}
+.end{display:grid;gap:14px;justify-items:center;text-align:center;padding-top:6vh}
+.end .stars svg{width:44px;height:44px}
+.end .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.miss{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.miss button{border:1px solid var(--ligne);background:#fff;border-radius:99px;padding:4px 12px 4px 4px;display:flex;align-items:center;gap:8px;font:600 .88rem var(--f-b)}
+.miss img{width:30px;height:30px;border-radius:50%;object-fit:cover}
+.disc{display:grid;gap:12px}
+.disc .quad{grid-template-columns:1fr 1fr}
+.disc .quad figure{aspect-ratio:1.25}
+.dots{display:flex;gap:6px;justify-content:center}.dots i{width:8px;height:8px;border-radius:50%;background:var(--ligne)}.dots i.on{background:var(--encre)}
+
+/* terrain */
+.box{border:1px solid var(--ligne);background:#fff;border-radius:16px;padding:16px;margin-bottom:14px}
+.box h2{font-size:1.2rem;font-weight:800;margin-bottom:8px}
+.keyq{font:700 1.15rem var(--f-d);margin:6px 0 10px}
+.buds{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.buds div{text-align:center;font-size:.78rem;color:var(--encre2)}.buds svg{height:120px;width:100%}.buds b{display:block;color:var(--encre);font-size:.86rem}
+details{margin-top:8px}summary{cursor:pointer;font-weight:600}
+.src{padding-left:1.2em;font-size:.88rem}.src a{color:var(--vert)}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:60;overflow:hidden}
+#fx i{position:absolute;top:-30px;width:16px;height:22px;border-radius:2px 60% 2px 60%;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(540deg)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (min-width:700px){.quad{gap:10px}.pad{padding:22px 24px 32px}}
+
+/* éléments de dessin */
+.ill .blade{fill:var(--leaf,#5b8a33);stroke:var(--edge,#2f4a1d);stroke-width:1.1;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+.ill .shine{fill:url(#gShine);stroke:none;pointer-events:none}
+.ill .mid{stroke:var(--vein,#d3e2a6);stroke-width:1.7;fill:none;vector-effect:non-scaling-stroke;opacity:.9;stroke-linecap:round}
+.ill .vein{stroke:var(--vein,#d3e2a6);stroke-width:.9;fill:none;vector-effect:non-scaling-stroke;opacity:.75;stroke-linecap:round}
+.ill .pet{stroke:var(--pet,#6d5733);stroke-width:2.6;fill:none;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.ill .twig{stroke:#6b4f33;stroke-width:4.5;fill:none;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.ill .needle{stroke:var(--needle,#3f6b4f);stroke-width:1.6;fill:none;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.ill .gland{fill:#b3262b}
+.ill .spine{fill:#7b5a3a;stroke:#5a3f26;stroke-width:.8;vector-effect:non-scaling-stroke}
+.ill .flat{stroke:var(--needle,#24452c);stroke-width:3.4;fill:none;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.ill .fine{stroke:var(--needle,#6f9a4f);stroke-width:1.3;fill:none;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.ill .scale{fill:var(--needle,#3d6a3f);stroke:#1f3a24;stroke-width:.5;vector-effect:non-scaling-stroke}
+.frame .draw{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+.frame img{width:100%;height:100%;object-fit:cover;border-radius:10px;display:none}
+body.photos .frame.hasph img{display:block}
+body.photos .frame.hasph .draw{display:none}
+body.photos .frame.hasph + figcaption .autbtn{display:none}
+.credits{font-size:.75rem;color:var(--muted);margin:8px 0 0;line-height:1.4}
+.credits a{color:var(--muted)}
+.phtoggle{display:inline-flex;gap:6px;margin-left:8px;vertical-align:middle}
+.ill .bud{fill:#8a5a34;stroke:#4f321c;stroke-width:.8;vector-effect:non-scaling-stroke}
+svg text{font-family:"Source Sans 3",sans-serif}
+.barkbox{overflow:hidden}.barkbox svg{display:block;width:100%;height:100%}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="gShine" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".30"/>
+      <stop offset=".5" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".14"/>
+    </linearGradient>
+    <linearGradient id="gCyl" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#000" stop-opacity=".55"/>
+      <stop offset=".2" stop-color="#000" stop-opacity=".1"/>
+      <stop offset=".45" stop-color="#fff" stop-opacity=".1"/>
+      <stop offset=".8" stop-color="#000" stop-opacity=".15"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".6"/>
+    </linearGradient>
+    <radialGradient id="gNut" cx=".35" cy=".3" r=".8">
+      <stop offset="0" stop-color="#fff" stop-opacity=".6"/>
+      <stop offset=".35" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".35"/>
+    </radialGradient>
+    <linearGradient id="gSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e9efe3"/><stop offset="1" stop-color="#f6f3e8"/>
+    </linearGradient>
+  </defs>
+</svg>
+<div id="app">
+  <header class="top">
+    <div class="brand"><span class="blaze"><i></i><i></i></span>Les arbres de chez moi</div>
+    <span class="pill j" id="stJ" title="Jours d’affilée"></span>
+    <span class="pill" id="stXp"></span>
+    <button class="icon" id="btnSound" aria-label="Activer ou couper le son"></button>
+  </header>
+  <main id="view"></main>
+  <nav class="tabs" aria-label="Sections">
+    <button data-tab="sentier"><svg viewBox="0 0 24 24"><path d="M5 20c0-5 4-4 7-7s2-7 7-9"/><circle cx="5" cy="20" r="1.6"/><circle cx="19" cy="4" r="1.6"/></svg>Sentier</button>
+    <button data-tab="jeux"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="11" rx="4"/><path d="M8 10.5v4M6 12.5h4M15.5 11.5h.01M18 14h.01"/></svg>Jeux</button>
+    <button data-tab="herbier"><svg viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M9 15c0-4 3-6 6-6 0 4-2 6-6 6zM9 15l3-3"/></svg>Herbier</button>
+    <button data-tab="terrain"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M11 8v6M8.5 10.5L11 8l2.5 2.5"/></svg>Terrain</button>
+  </nav>
+</div>
+<div id="play" hidden></div>
+<div id="sheet" hidden></div>
+<div id="fx"></div>
+
+<script src="photos.js"></script>
+<script src="engine.js"></script>
+<script>
+/* ============ données du jeu ============ */
+const PH = window.PHOTOS || {};
+const X = {
+ sessile:['Feuille à queue, gland sans queue.',['pedoncule','pubescent','chenerouge']],
+ pedoncule:['Feuille sans queue avec deux oreillettes, gland au bout d’une longue queue.',['sessile','pubescent','chenerouge']],
+ chataignier:['Longue feuille en scie : une grosse dent au bout de chaque nervure.',['marronnier','merisier','charme']],
+ hetre:['Feuille au bord lisse et cilié, tronc lisse gris argenté.',['charme','aulne','noisetier']],
+ charme:['Feuille gaufrée doublement dentée, tronc cannelé comme des muscles.',['hetre','noisetier','merisier']],
+ bouleau:['Tronc blanc à marques noires, petites feuilles en losange.',['tremble','merisier','aulne']],
+ pinsyl:['Aiguilles courtes par deux, haut du tronc orange saumon.',['laricio','cedre','if']],
+ laricio:['Longues aiguilles par deux (plus de 10 cm), tronc gris en plaques.',['pinsyl','cedre','if']],
+ merisier:['Écorce brun-rouge à bandes horizontales, deux glandes rouges sur le pétiole.',['bouleau','charme','chataignier']],
+ sycomore:['Feuilles opposées à 5 lobes dentés, samares en angle droit ou aigu.',['erableplane','platane','erablech']],
+ frene:['Feuilles composées opposées, bourgeons noirs.',['robinier','sorbier','marronnier']],
+ aulne:['Feuille au bout tronqué, petits cônes noirs, les pieds dans l’eau.',['noisetier','hetre','tilleul']],
+ tilleul:['Feuille en cœur de travers, fruits pendus à une languette.',['noisetier','tremble','aulne']],
+ platane:['Écorce en camouflage, boules pendantes, feuilles alternes.',['sycomore','erableplane','tulipier']],
+ marronnier:['Feuille en éventail de 5 à 7 folioles, marron sans pointe.',['chataignier','frene','platane']],
+ robinier:['Folioles ovales et lisses, deux épines à la base de chaque feuille, gousses.',['frene','sorbier','saule']],
+ chenerouge:['Lobes pointus terminés par une soie, écorce longtemps lisse.',['sessile','alisier','erableplane']],
+ pubescent:['Dessous des feuilles et jeunes rameaux duveteux.',['sessile','pedoncule','chenerouge']],
+ tremble:['Feuille ronde au pétiole aplati, tronc gris-vert à losanges.',['bouleau','aulne','tilleul']],
+ sorbier:['Feuilles composées alternes, bouquets de baies rouge-orangé.',['frene','robinier','alisier']],
+ alisier:['Feuille alterne à lobes pointus, les plus profonds en bas.',['erablech','chenerouge','platane']],
+ houx:['Feuilles persistantes, luisantes et piquantes.',['if','hetre','charme']],
+ noisetier:['Plusieurs tiges depuis le sol, feuille ronde et velue.',['aulne','tilleul','charme']],
+ erablech:['Petite feuille opposée aux lobes arrondis, samares à plat.',['sycomore','erableplane','alisier']],
+ erableplane:['Lobes à longues dents fines, lait blanc au pétiole.',['sycomore','platane','erablech']],
+ saule:['Feuilles en lame, argentées dessous, au bord de l’eau.',['robinier','frene','aulne']],
+ if:['Aiguilles plates sur deux rangs, perles rouges, pas de cône.',['cypres','sequoia','cedre']],
+ cedre:['Aiguilles en rosettes, grands étages horizontaux.',['pinsyl','laricio','if']],
+ ginkgo:['Feuille en petit éventail.',['tulipier','tilleul','tremble']],
+ tulipier:['Feuille à 4 lobes au bout coupé net.',['platane','ginkgo','erableplane']],
+ sequoia:['Écorce rouge et moelleuse, feuilles en petites écailles.',['cypres','if','cedre']],
+ cypres:['Conifère qui perd ses aiguilles l’hiver, « genoux » au bord de l’eau.',['if','sequoia','cedre']],
+};
+SP.forEach(s=>{ s.cle=X[s.id][0]; s.sim=X[s.id][1]; });
+const IDS = SP.map(s=>s.id);
+const VF = [
+ ['sessile','Le gland du chêne sessile est porté par une longue queue.',0,'C’est le pédonculé. Chez le sessile, le gland est collé au rameau.'],
+ ['pedoncule','La feuille du chêne pédonculé a deux petites oreillettes à sa base.',1,'Et presque pas de pétiole.'],
+ ['hetre','L’écorce du hêtre reste lisse toute sa vie.',1,'Lisse et gris argenté, même sur les vieux arbres.'],
+ ['charme','La feuille du charme a un bord lisse.',0,'Elle est doublement dentée. Le bord lisse et cilié, c’est le hêtre.'],
+ ['chataignier','Le châtaignier est l’essence la plus répandue en forêt de Fausses-Reposes.',1,'Il couvre 47 % de la surface boisée (ONF).'],
+ ['marronnier','Le marron d’Inde se mange grillé, comme la châtaigne.',0,'Il est toxique. La châtaigne a une pointe à touffe, le marron est rond.'],
+ ['frene','Les bourgeons du frêne sont noirs.',1,'C’est le critère d’hiver infaillible.'],
+ ['frene','Les feuilles du frêne sont alternes sur le rameau.',0,'Elles sont opposées, face à face.'],
+ ['bouleau','Le bouleau est un pionnier qui colonise vite les clairières.',1,'On le voit dans les coupes récentes et les lisières.'],
+ ['pinsyl','Le haut du tronc du pin sylvestre est orangé.',1,'Orange saumon, en fines plaques.'],
+ ['laricio','Le pin laricio a des aiguilles plus courtes que le pin sylvestre.',0,'C’est l’inverse : plus de 10 cm pour le laricio, 3 à 7 cm pour le sylvestre.'],
+ ['merisier','Le merisier est un cerisier sauvage.',1,'Il donne de petites cerises à longues queues.'],
+ ['platane','Les feuilles du platane sont opposées, comme celles des érables.',0,'Elles sont alternes. C’est ce qui le sépare des érables.'],
+ ['sycomore','Les fruits de l’érable sycomore sont des samares doubles.',1,'Les fameux « hélicoptères ».'],
+ ['erableplane','Un lait blanc perle quand on casse le pétiole de l’érable plane.',1,'Le sycomore, lui, n’en a pas.'],
+ ['erablech','L’érable champêtre a des lobes pointus et dentés.',0,'Ses lobes sont arrondis et sans dents.'],
+ ['tilleul','La feuille du tilleul est parfaitement symétrique à sa base.',0,'Sa base est de travers : un cœur asymétrique.'],
+ ['robinier','Le robinier porte deux épines à la base de chaque feuille.',1,'C’est le critère décisif.'],
+ ['robinier','Le robinier faux-acacia est originaire d’Amérique du Nord.',1,'Il s’est installé partout sur les talus et les friches.'],
+ ['aulne','L’aulne garde ses petits cônes noirs sur l’arbre en hiver.',1,'Pratique pour le reconnaître sans feuilles.'],
+ ['saule','Le dessous des feuilles du saule blanc est argenté.',1,'De loin, l’arbre paraît gris.'],
+ ['houx','Tous les pieds de houx portent des baies rouges.',0,'Seulement les pieds femelles.'],
+ ['noisetier','Le noisetier pousse sur un seul gros tronc.',0,'Il pousse en bouquet : plusieurs tiges depuis le sol.'],
+ ['sorbier','Les feuilles du sorbier des oiseleurs sont opposées.',0,'Elles sont alternes. Opposées, ce serait un frêne.'],
+ ['tremble','Le pétiole de la feuille du tremble est aplati.',1,'C’est pour cela qu’elle tremble au moindre souffle.'],
+ ['chenerouge','Le chêne rouge d’Amérique a des lobes arrondis.',0,'Ses lobes sont pointus et terminés par une soie.'],
+ ['pubescent','Le chêne pubescent supporte mieux la sécheresse que le sessile et le pédonculé.',1,'C’est pourquoi l’ONF le plante aujourd’hui en Île-de-France.'],
+ ['if','Le feuillage et les graines de l’if sont très toxiques.',1,'On ne goûte pas ses perles rouges.'],
+ ['if','L’if produit des cônes, comme les pins.',0,'Sa graine est logée dans une coupe rouge charnue, l’arille.'],
+ ['cedre','Les aiguilles du cèdre sont groupées en rosettes.',1,'Sur de petits rameaux courts.'],
+ ['cedre','Les cônes du cèdre pendent sous les branches.',0,'Ils sont dressés, en tonnelet, et se défont sur la branche.'],
+ ['ginkgo','Le ginkgo vire au jaune d’or à l’automne.',1,'Puis il perd ses feuilles presque d’un coup.'],
+ ['tulipier','Les fleurs du tulipier ressemblent à des tulipes.',1,'Vert-jaune et orange, vers juin.'],
+ ['sequoia','L’écorce du séquoia géant est dure comme de la pierre.',0,'Elle est fibreuse, épaisse et moelleuse.'],
+ ['cypres','Le cyprès chauve garde ses aiguilles tout l’hiver.',0,'Il les perd, d’où son nom.'],
+ ['alisier','Les feuilles de l’alisier torminal sont opposées, comme celles des érables.',0,'Elles sont alternes.'],
+];
+const LV = [
+ {n:'La chênaie',p:'Forêt de Rambouillet',t:['sessile','pedoncule','hetre','charme']},
+ {n:'Pinède et plantations',p:'Forêt de Rambouillet',t:['pinsyl','laricio','chenerouge','pubescent']},
+ {n:'Le sous-bois',p:'Forêt de Rambouillet',t:['houx','noisetier','sorbier','alisier']},
+ {n:'Au bord de l’eau',p:'Étangs de Hollande',t:['aulne','saule','frene','cypres']},
+ {n:'Châtaigniers et pionniers',p:'Marly et Fausses-Reposes',t:['chataignier','merisier','bouleau','tremble']},
+ {n:'Les rues',p:'Le Chesnay',t:['tilleul','platane','marronnier','robinier']},
+ {n:'Parcs et jardins',p:'Le Chesnay, Versailles',t:['sycomore','erableplane','erablech','if']},
+ {n:'Les arbres admirables',p:'Trianon, domaine de Versailles',t:['cedre','tulipier','sequoia','ginkgo']},
+ {n:'Le grand tour',p:'Les 32 arbres',t:[]},
+];
+const RANKS = [[0,'Promeneur'],[150,'Curieux des bois'],[400,'Apprenti forestier'],[900,'Garde forestier'],[1600,'Botaniste'],[2600,'Maître des arbres']];
+const KLAB = {leaf:'Feuille',fruit:'Fruit',bark:'Écorce',tree:'Arbre entier'};
+const KFR = {leaf:'la feuille',fruit:'le fruit',bark:'l’écorce',tree:'la silhouette'};
+const KINDS = ['leaf','fruit','bark','tree'];
+const DAY = 864e5, INTV = [0,1,2,4,8,16];
+
+/* ============ état ============ */
+const LS = 'arbres-de-chez-moi-v1';
+const fresh = () => ({v:1,t:0,xp:0,stars:{},seen:{},box:{},due:{},best:{},last:'',streak:0,sound:true,all:false});
+let S = fresh();
+try{ const r = JSON.parse(localStorage.getItem(LS)); if(r && r.v===1) S = Object.assign(fresh(), r); }catch(e){}
+let cloud = null, cloudBusy = false, cloudDirty = false, cloudTimer = 0, cloudOn = false;
+function save(){ S.t = Date.now(); try{ localStorage.setItem(LS, JSON.stringify(S)); }catch(e){} if(cloud){ cloudDirty = true; clearTimeout(cloudTimer); cloudTimer = setTimeout(pushCloud, 2500); } hud(); }
+async function pushCloud(){ if(!cloud || cloudBusy || !cloudDirty) return; cloudBusy = true; cloudDirty = false;
+  try{ await cloud.set(JSON.parse(JSON.stringify(S))); }catch(e){ if(e && (e.code==='invalid_argument'||e.code==='revoked'||e.code==='not_granted')) cloud = null; }
+  cloudBusy = false; if(cloudDirty) cloudTimer = setTimeout(pushCloud, 2500); }
+(async function(){ try{ if(!window.claude || !window.claude.use) return;
+  const [db,user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]); if(!db || !user) return;
+  const id = await user.id(); if(!id) return; const ref = db.doc('data/users/'+id+'/progression'); const snap = await ref.get(); cloud = ref; cloudOn = true;
+  if(snap.exists){ const d = snap.data(); if(d && d.v===1 && d.t > S.t){ S = Object.assign(fresh(), JSON.parse(JSON.stringify(d))); try{ localStorage.setItem(LS, JSON.stringify(S)); }catch(e){} hud(); if($('#play').hidden) route(); } else if(S.t > ((d&&d.t)||0)){ cloudDirty = true; pushCloud(); } }
+  else if(S.xp > 0){ cloudDirty = true; pushCloud(); }
+  if(tab==='terrain' && $('#play').hidden) route();
+ }catch(e){} })();
+
+const today = () => { const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+function touchDay(){ const t = today(); if(S.last===t) return; const y = new Date(Date.now()-DAY); const ys = y.getFullYear()+'-'+String(y.getMonth()+1).padStart(2,'0')+'-'+String(y.getDate()).padStart(2,'0'); S.streak = S.last===ys ? S.streak+1 : 1; S.last = t; }
+function record(id, ok){ if(!BYID[id]) return; S.seen[id] = 1; let b = S.box[id]||0; b = ok ? Math.min(5,b+1) : Math.max(0,b-1); S.box[id] = b; S.due[id] = Date.now() + INTV[b]*DAY; }
+const seenIds = () => S.all ? IDS : IDS.filter(i=>S.seen[i]);
+const dueIds = () => IDS.filter(i=>S.seen[i] && (S.due[i]||0) <= Date.now());
+const rankOf = xp => { let k = 0; RANKS.forEach((r,i)=>{ if(xp>=r[0]) k = i; }); return k; };
+const lvOpen = i => S.all || i===0 || (S.stars[i-1]||0) > 0;
+
+/* ============ petits outils ============ */
+const shuffle = a => { a = a.slice(); for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; };
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const img = (id,k) => `<img src="${PH[id][k].src}" alt="" draggable="false">`;
+const blaze = ok => ok ? '<span class="blaze"><i></i><i></i></span>' : '<span class="blaze no"><i></i><i></i></span>';
+const starSvg = on => `<svg viewBox="0 0 24 24" class="${on?'on':''}"><path d="M12 2.5l2.9 6.2 6.6.8-4.9 4.6 1.3 6.6L12 17.4l-5.9 3.3 1.3-6.6L2.5 9.5l6.6-.8z"/></svg>`;
+const stars = n => `<span class="stars" aria-label="${n} étoile${n>1?'s':''} sur 3">${[1,2,3].map(k=>starSvg(k<=n)).join('')}</span>`;
+const plain = h => String(h).replace(/<[^>]+>/g,'');
+function nb(root){ const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); let n; while((n = w.nextNode())) n.nodeValue = ty(n.nodeValue); }
+function setHtml(el, h){ el.innerHTML = h; nb(el); }
+
+/* ============ son et feuilles ============ */
+let AC = null;
+function sfx(kind){ if(!S.sound) return; try{ AC = AC || new (window.AudioContext||window.webkitAudioContext)(); if(AC.state==='suspended') AC.resume(); const t = AC.currentTime;
+  const tone = (f,at,d,type,g) => { const o = AC.createOscillator(), v = AC.createGain(); o.type = type||'sine'; o.frequency.value = f; v.gain.setValueAtTime(0,t+at); v.gain.linearRampToValueAtTime(g||.09,t+at+.015); v.gain.exponentialRampToValueAtTime(.001,t+at+d); o.connect(v); v.connect(AC.destination); o.start(t+at); o.stop(t+at+d+.02); };
+  if(kind==='ok'){ tone(659,0,.1); tone(988,.09,.18); }
+  else if(kind==='ko'){ tone(196,0,.22,'triangle',.12); tone(156,.1,.25,'triangle',.1); }
+  else if(kind==='win'){ [523,659,784,1047].forEach((f,i)=>tone(f,i*.11,.22)); }
+  else if(kind==='tap'){ tone(520,0,.05,'sine',.05); }
+ }catch(e){} }
+function leaves(){ if(matchMedia('(prefers-reduced-motion: reduce)').matches) return; const fx = $('#fx'), cols = ['#d6362b','#f0b40f','#1f6a3c','#e08a1e','#8fb04f']; let h = '';
+  for(let i=0;i<34;i++) h += `<i style="left:${Math.random()*100}%;background:${pick(cols)};animation-duration:${1.6+Math.random()*1.8}s;animation-delay:${Math.random()*.5}s"></i>`;
+  fx.innerHTML = h; setTimeout(()=>{ fx.innerHTML = ''; }, 4200); }
+
+/* ============ en-tête et navigation ============ */
+let tab = 'sentier';
+function hud(){ $('#stXp').textContent = S.xp+' XP'; const j = $('#stJ'); j.textContent = S.streak>1 ? S.streak+' jours' : S.streak===1 ? '1 jour' : ''; j.style.display = S.streak ? '' : 'none';
+  $('#btnSound').innerHTML = S.sound ? '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9zM16.5 8.5a5 5 0 0 1 0 7"/></svg>' : '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9zM17 9.5l4 5M21 9.5l-4 5"/></svg>'; }
+$('#btnSound').onclick = () => { S.sound = !S.sound; save(); sfx('tap'); };
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { location.hash = b.dataset.tab; if(tab===b.dataset.tab) route(); });
+function route(){ const h = location.hash.slice(1); tab = ['sentier','jeux','herbier','terrain'].includes(h) ? h : 'sentier';
+  document.querySelectorAll('.tabs button').forEach(b => b.dataset.tab===tab ? b.setAttribute('aria-current','page') : b.removeAttribute('aria-current'));
+  ({sentier:vSentier, jeux:vJeux, herbier:vHerbier, terrain:vTerrain})[tab](); $('#view').scrollTop = 0; }
+addEventListener('hashchange', route);
+
+/* ============ le sentier ============ */
+const MW = 400, MH = 1330, PTS = [[108,150],[292,285],[112,420],[290,555],[112,690],[292,825],[112,960],[290,1095],[200,1235]];
+function mapSvg(){ const r = rng(12); let s = `<rect width="${MW}" height="${MH}" fill="#f1eddc"/>`;
+  const blob = (cx,cy,rx,ry,fill,op) => { const p = []; for(let k=0;k<14;k++){ const a = k/14*6.283, q = .82+r()*.36; p.push([cx+Math.cos(a)*rx*q, cy+Math.sin(a)*ry*q]); } let d = ''; for(let k=0;k<p.length;k++){ const a = p[k], b = p[(k+1)%p.length]; const m = [(a[0]+b[0])/2,(a[1]+b[1])/2]; d += (k?'Q':'M'+F((p[p.length-1][0]+a[0])/2)+' '+F((p[p.length-1][1]+a[1])/2)+'Q')+F(a[0])+' '+F(a[1])+' '+F(m[0])+' '+F(m[1]); } return `<path d="${d}Z" fill="${fill}" opacity="${op||1}"/>`; };
+  s += blob(200,330,235,300,'#cfe2b3') + blob(110,690,170,130,'#cfe2b3') + blob(300,640,90,70,'#d8e8c0') + blob(150,1010,150,95,'#dbeac6') + blob(300,1120,120,90,'#dbeac6');
+  for(let k=0;k<13;k++){ const y0 = 60+k*100+r()*30; let d = `M-10 ${F(y0)}`; for(let x=30;x<=420;x+=40) d += ` Q${x-20} ${F(y0+(r()-.5)*46)} ${x} ${F(y0+(r()-.5)*30)}`; s += `<path d="${d}" fill="none" stroke="#d9a873" stroke-width="${k%4===0?1.3:.7}" opacity=".7"/>`; }
+  s += blob(70,565,52,22,'#a9d0e8') + blob(150,590,40,16,'#a9d0e8') + blob(215,612,26,11,'#a9d0e8') + `<path d="M0 548 Q40 560 70 565 M190 598 Q240 620 262 560" stroke="#2a78ad" stroke-width="1.4" fill="none"/>`;
+  const town = (x,y,n) => { let t = ''; for(let k=0;k<n;k++) t += `<rect x="${F(x+(r()-.5)*120)}" y="${F(y+(r()-.5)*54)}" width="${F(7+r()*9)}" height="${F(6+r()*7)}" fill="#bdb7a4" transform="rotate(${F((r()-.5)*40)} ${x} ${y})"/>`; return t; };
+  s += town(200,48,22) + town(215,820,26) + town(330,905,14);
+  s += `<path d="M300 760 L395 740 M300 885 L400 900 M235 760 L250 900" stroke="#fff" stroke-width="5"/><path d="M300 760 L395 740 M300 885 L400 900 M235 760 L250 900" stroke="#c9c2ab" stroke-width="1"/>`;
+  s += `<g fill="none" stroke="#9fbf7a" stroke-width="1.2"><rect x="238" y="1020" width="120" height="150" rx="4"/><path d="M298 1020V1170M238 1095H358M238 1020L358 1170M358 1020L238 1170"/></g>`;
+  const lab = (x,y,t,o) => `<text x="${x}" y="${y}" text-anchor="${o.a||'middle'}" font-family="${o.f||'Instrument Serif, Georgia, serif'}" font-style="${o.i===0?'normal':'italic'}" font-size="${o.s||15}" fill="${o.c||'#3f7a45'}" letter-spacing="${o.ls||0}" font-weight="${o.w||400}" ${o.r?`transform="rotate(${o.r} ${x} ${y})"`:''}>${t}</text>`;
+  s += lab(200,30,'LE PERRAY-EN-YVELINES',{i:0,f:'Instrument Sans, sans-serif',s:12,c:'#1b2a21',w:700,ls:1.5});
+  s += lab(350,215,'Forêt domaniale',{s:17,ls:2,r:90}) + lab(372,215,'de Rambouillet',{s:17,ls:2,r:90});
+  s += lab(12,520,'Étangs de Hollande',{a:'start',c:'#2a78ad',s:14});
+  s += lab(30,760,'Forêt de Marly',{a:'start',s:16,ls:1.5}) + lab(345,665,'Fausses-Reposes',{s:13,r:-12});
+  s += lab(118,865,'LE CHESNAY',{i:0,f:'Instrument Sans, sans-serif',s:12,c:'#1b2a21',w:700,ls:1.5});
+  s += lab(298,1196,'Parc de Trianon',{s:14}) + lab(60,1085,'Versailles',{a:'start',s:16,ls:1.5,c:'#52605a'});
+  for(let i=0;i<PTS.length-1;i++){ const a = PTS[i], b = PTS[i+1], d = `M${a[0]} ${a[1]} C${a[0]} ${a[1]+75} ${b[0]} ${b[1]-75} ${b[0]} ${b[1]}`; const done = (S.stars[i]||0) > 0;
+    s += `<path d="${d}" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${done?'#d6362b':'#b9b6a6'}" stroke-width="4.5" stroke-linecap="round" ${done?'':'stroke-dasharray="2 10"'}/>`; }
+  return `<svg viewBox="0 0 ${MW} ${MH}" role="img" aria-label="Carte du sentier, du Perray-en-Yvelines au Chesnay">${s}</svg>`; }
+function vSentier(){ const k = rankOf(S.xp), nx = RANKS[k+1], base = RANKS[k][0], pct = nx ? Math.round((S.xp-base)/(nx[0]-base)*100) : 100, due = dueIds().length;
+  const cur = LV.findIndex((l,i)=>lvOpen(i) && !(S.stars[i]>0));
+  let h = `<div class="rank"><div><div class="lbl">${Object.keys(S.seen).length ? 'Ton grade' : 'Du Perray au Chesnay, 32 arbres à reconnaître'}</div><h1>${RANKS[k][1]}</h1></div><div class="mut sm" style="text-align:right">${nx ? 'encore '+(nx[0]-S.xp)+' XP<br>avant '+nx[1] : 'grade maximal'}</div><div class="xpbar"><i style="width:${Math.max(pct,3)}%"></i></div></div>`;
+  if(due >= 3) h += `<div class="revise"><div><b>${due} arbres à revoir</b><div class="sm mut">Une révision au bon moment, et ils restent en mémoire.</div></div><button class="btn" id="goRev">Réviser</button></div>`;
+  h += `<div class="map">${mapSvg()}`;
+  LV.forEach((l,i)=>{ const [x,y] = PTS[i], st = S.stars[i]||0, open = lvOpen(i), left = x > MW/2;
+    h += `<button class="node ${st?'done':open?'':'lock'} ${i===cur?'cur':''}" style="left:${x/MW*100}%;top:${y/MH*100}%" data-lv="${i}" aria-label="Étape ${i+1} : ${l.n}${open?'':' (verrouillée)'}">${open ? (i===8?'★':i+1) : '<svg viewBox="0 0 24 24" width="45%" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>'}</button>`;
+    h += `<div class="nlab ${left?'l':''}" style="${left?`right:${(MW-x)/MW*100+11}%`:`left:${x/MW*100+11}%`};top:${y/MH*100}%"><b>${l.n}</b><span>${l.p}</span>${st?'<br>'+stars(st):''}</div>`; });
+  h += `</div>`;
+  setHtml($('#view'), h);
+  document.querySelectorAll('.node').forEach(b => b.onclick = () => { sfx('tap'); stageSheet(+b.dataset.lv); });
+  const g = $('#goRev'); if(g) g.onclick = () => startRevision(); }
+function stageSheet(i){ const l = LV[i], open = lvOpen(i), st = S.stars[i]||0;
+  if(i===8){ sheet(`<div class="shead"><div><h2>${l.n}</h2><div class="lat">20 questions sur les 32 arbres</div></div><button class="icon" data-close aria-label="Fermer">✕</button></div>${st?'<p>'+stars(st)+'</p>':''}<p class="mut">${open?'L’épreuve finale : toutes les essences, tous les types de questions.':'Termine les huit étapes pour ouvrir le grand tour.'}</p><button class="btn wide" id="lvGo" ${open?'':'disabled'}>Partir pour le grand tour</button>`);
+    $('#lvGo').onclick = () => { closeSheet(); startLevel(8); }; return; }
+  const seen = l.t.every(t=>S.seen[t]);
+  sheet(`<div class="shead"><div><h2>${l.n}</h2><div class="lat">${l.p}</div></div><button class="icon" data-close aria-label="Fermer">✕</button></div>${st?'<p>'+stars(st)+'</p>':''}
+   <div class="quad">${l.t.map(t=>`<figure>${img(t,'leaf')}<figcaption>${BYID[t].nom}</figcaption></figure>`).join('')}</div>
+   <p class="mut" style="margin:12px 0">${open ? (seen ? 'Tu connais déjà ces quatre arbres. Passe l’épreuve, ou revois-les d’abord.' : 'Quatre arbres à découvrir, puis une épreuve de 10 à 12 questions.') : 'Réussis l’étape précédente pour ouvrir celle-ci.'}</p>
+   <div style="display:grid;gap:10px"><button class="btn wide" id="lvGo" ${open?'':'disabled'}>${seen?'Passer l’épreuve':'Découvrir les 4 arbres'}</button>${seen&&open?'<button class="btn sec wide" id="lvSee">Revoir les 4 arbres</button>':''}</div>`);
+  $('#lvGo').onclick = () => { closeSheet(); seen ? startLevel(i) : discover(i,0); };
+  const s = $('#lvSee'); if(s) s.onclick = () => { closeSheet(); discover(i,0); }; }
+
+/* ============ découverte ============ */
+function playShell(inner){ const p = $('#play'); p.hidden = false; setHtml(p, `<div class="pwrap">${inner}</div>`); return p; }
+function quitPlay(){ clearInterval(tick); $('#play').hidden = true; $('#play').innerHTML = ''; route(); }
+let tick = 0;
+function discover(lv, k){ const l = LV[lv], sp = BYID[l.t[k]]; S.seen[sp.id] = 1; if(S.box[sp.id]===undefined){ S.box[sp.id] = 0; S.due[sp.id] = Date.now(); } save();
+  playShell(`<div class="phead"><button class="icon" id="pQuit" aria-label="Quitter">✕</button><div class="dots" style="flex:1">${l.t.map((_,j)=>`<i class="${j<=k?'on':''}"></i>`).join('')}</div><span class="combo"></span></div>
+   <div class="pbody disc"><div><div class="kick">Découverte ${k+1} sur 4 · ${l.n}</div><h2 class="prompt">${sp.nom}</h2><div class="lat" style="font:italic 1.15rem var(--f-c);color:var(--encre2)">${sp.latin}</div></div>
+   <div class="quad">${['tree','leaf','fruit','bark'].map(q=>`<figure>${img(sp.id,q)}<figcaption>${KLAB[q]}</figcaption></figure>`).join('')}</div>
+   <div class="cle">${blaze(true)}<span>${sp.cle}</span></div>
+   <div class="memo">${sp.memo}</div>
+   <p class="mut sm" style="margin:0">${sp.ou}</p></div>
+   <div class="fb"><div style="display:flex;gap:10px">${k?'<button class="btn sec" id="dPrev">Retour</button>':''}<button class="btn" style="flex:1" id="dNext">${k<3?'Arbre suivant':'Passer l’épreuve'}</button></div></div>`);
+  $('#pQuit').onclick = quitPlay; const pv = $('#dPrev'); if(pv) pv.onclick = () => discover(lv,k-1);
+  $('#dNext').onclick = () => { sfx('tap'); k<3 ? discover(lv,k+1) : startLevel(lv); }; }
+
+/* ============ fabrique de questions ============ */
+function distract(id, pool, n){ const P = pool.filter(x=>x!==id); const sims = shuffle(BYID[id].sim.filter(x=>P.includes(x))); const rest = shuffle(P.filter(x=>!sims.includes(x))); let out = sims.concat(rest).slice(0,n);
+  if(out.length<n) out = out.concat(shuffle(IDS.filter(x=>x!==id && !out.includes(x))).slice(0,n-out.length)); return out; }
+const nameOpts = (id,pool) => shuffle([id].concat(distract(id,pool,3))).map(x=>({id:x, html:BYID[x].nom}));
+const expl = id => (o,ok) => { const sp = BYID[id]; let h = `${ok?'':'C’était : '}<b>${sp.nom}</b>. ${sp.cle}`; if(!ok && BYID[o.id]) h += `<br><span class="mut">${BYID[o.id].nom} : ${BYID[o.id].cle}</span>`; return h; };
+function qPhoto(id, pool, kind){ kind = kind || pick(KINDS); return {sp:id, answer:id, kicker:'Photo · '+KLAB[kind].toLowerCase(), prompt:'Quel est cet arbre ?', media:`<div class="qimg">${img(id,kind)}</div>`, opts:nameOpts(id,pool), explain:expl(id)}; }
+function qBlur(id, pool){ const q = qPhoto(id,pool,pick(['leaf','fruit','tree'])); q.kicker = 'Photo mystère'; q.prompt = 'Réponds avant que l’image soit nette'; q.media = q.media.replace('class="qimg"','class="qimg blur"') + '<div class="tbar"><i id="tb"></i></div>'; q.timed = 9; return q; }
+function qSchema(id, pool){ return {sp:id, answer:id, kicker:'Schéma', prompt:'À qui est cette feuille ?', media:`<div class="qimg draw">${leafSvg(BYID[id])}</div>`, opts:nameOpts(id,pool), explain:expl(id)}; }
+function qClue(id, pool){ return {sp:id, answer:id, kicker:'Indice', prompt:'Quel arbre se reconnaît ainsi ?', media:`<p class="quote">${BYID[id].cle}</p>`, opts:nameOpts(id,pool), explain:expl(id)}; }
+function qPick(id, pool, kind){ kind = kind || pick(KINDS); return {sp:id, answer:id, layout:'grid', kicker:'Trouve la bonne photo', prompt:`<em>${BYID[id].nom}</em> : touche ${KFR[kind]}`, opts:shuffle([id].concat(distract(id,pool,3))).map(x=>({id:x, html:img(x,kind)+`<span class="cap">${BYID[x].nom}</span>`})), explain:expl(id)}; }
+function qDuel(a, b, kind){ kind = kind || pick(['leaf','fruit','bark']); return {sp:a, answer:a, layout:'grid', kicker:'Duel · '+KLAB[kind].toLowerCase(), prompt:`Lequel est <em>${BYID[a].nom}</em> ?`, opts:shuffle([a,b]).map(x=>({id:x, html:img(x,kind)+`<span class="cap">${BYID[x].nom}</span>`})), explain:(o,ok)=>`<b>${BYID[a].nom}</b> : ${BYID[a].cle}<br><b>${BYID[b].nom}</b> : ${BYID[b].cle}`}; }
+function qVF(v){ return {sp:v[0], answer:v[2]?'V':'F', kicker:'Vrai ou faux', prompt:'Vrai ou faux ?', media:`<p class="quote">${v[1]}</p>`, opts:[{id:'V',html:'Vrai'},{id:'F',html:'Faux'}], explain:()=>`${v[2]?'Vrai.':'Faux.'} ${v[3]}`}; }
+function qAny(id, pool){ const r = Math.random(), vf = VF.filter(v=>v[0]===id), sims = BYID[id].sim.filter(x=>pool.includes(x));
+  if(r<.34) return qPhoto(id,pool); if(r<.5) return qPick(id,pool); if(r<.62 && sims.length) return qDuel(id,pick(sims)); if(r<.75) return qClue(id,pool); if(r<.88 && vf.length) return qVF(pick(vf)); if(r<.94) return qSchema(id,pool); return qPhoto(id,pool,'leaf'); }
+function levelQs(lv){ if(lv===8) return shuffle(IDS).slice(0,20).map(id=>qAny(id,IDS));
+  const t = LV[lv].t, prev = LV.slice(0,lv).flatMap(l=>l.t), pool = t.concat(prev); let qs = shuffle(t).map(id=>qPhoto(id,t,'leaf'));
+  const o = shuffle(t), vf = VF.filter(v=>t.includes(v[0])), pair = o.find(a=>BYID[a].sim.some(b=>t.includes(b)));
+  qs.push(qClue(o[0],t), qPick(o[1],t,pick(['fruit','bark'])));
+  qs.push(pair ? qDuel(pair, BYID[pair].sim.find(b=>t.includes(b))) : qPhoto(o[2],t,'bark'));
+  qs.push(vf.length ? qVF(pick(vf)) : qClue(o[2],t));
+  qs.push(qPhoto(o[3],pool,pick(['fruit','tree'])), qSchema(o[2],pool));
+  if(prev.length){ const old = shuffle(prev).slice(0,2); qs.push(qAny(old[0],pool), qAny(old[1],pool)); }
+  return qs; }
+
+/* ============ moteur de partie ============ */
+const BRAVO = ['Bonne direction','Bien vu','Exact','En plein dans le mille','Tu tiens le bon chemin'];
+let SES = null;
+function startSession(cfg){ touchDay(); SES = Object.assign({i:0, ok:0, combo:0, xp:0, res:[], missed:[]}, cfg); drawQ(); }
+function startLevel(lv){ startSession({title:LV[lv].n, level:lv, qs:levelQs(lv), again:()=>startLevel(lv)}); }
+function startRevision(){ const due = shuffle(dueIds()), rest = shuffle(seenIds().filter(i=>!due.includes(i))).sort((a,b)=>(S.box[a]||0)-(S.box[b]||0)); const ids = due.concat(rest).slice(0,10); const pool = seenIds();
+  if(ids.length<4) return; startSession({title:'Révision', qs:shuffle(ids).map(id=>qAny(id,pool)), again:startRevision}); }
+function drawQ(){ const q = SES.qs[SES.i]; clearInterval(tick);
+  playShell(`<div class="phead"><button class="icon" id="pQuit" aria-label="Quitter la partie">✕</button><div class="pbar">${SES.qs.map((_,k)=>`<i class="${k<SES.i?(SES.res[k]?'ok':'ko'):k===SES.i?'cur':''}"></i>`).join('')}</div><span class="combo">${SES.combo>1?'×'+SES.combo:''}</span></div>
+   <div class="pbody"><div><div class="kick">${q.kicker}</div><h2 class="prompt">${q.prompt}</h2></div>${q.media||''}<div class="opts ${q.layout||''}" id="opts">${q.opts.map((o,k)=>`<button class="opt" data-k="${k}">${o.html}</button>`).join('')}</div></div><div id="fbSlot"></div>`);
+  $('#pQuit').onclick = quitPlay; document.querySelectorAll('#opts .opt').forEach(b => b.onclick = () => answer(+b.dataset.k));
+  if(q.timed){ const t0 = Date.now(), box = document.querySelector('.qimg.blur'); requestAnimationFrame(()=>requestAnimationFrame(()=>box && box.classList.add('go'))); q.t0 = t0;
+    tick = setInterval(()=>{ const left = Math.max(0, 1-(Date.now()-t0)/(q.timed*1000)); const tb = $('#tb'); if(tb) tb.style.width = (left*100)+'%'; if(left<=0) clearInterval(tick); }, 100); } }
+function answer(k){ const q = SES.qs[SES.i]; if(q.done) return; q.done = true; clearInterval(tick); const o = q.opts[k], ok = o.id===q.answer;
+  const box = $('#opts'); box.classList.add('done'); box.querySelectorAll('.opt').forEach((b,j)=>{ if(q.opts[j].id===q.answer) b.classList.add('ok'); else if(j===k) b.classList.add('ko'); });
+  const bl = document.querySelector('.qimg.blur'); if(bl) bl.classList.add('end');
+  SES.res[SES.i] = ok; record(q.sp, ok); let gain = 0;
+  if(ok){ SES.ok++; SES.combo++; gain = 10 + Math.min(SES.combo-1,5)*2; if(q.timed) gain += Math.max(0, Math.round(q.timed-(Date.now()-q.t0)/1000)); } else { SES.combo = 0; if(BYID[q.sp] && !SES.missed.includes(q.sp)) SES.missed.push(q.sp); }
+  SES.xp += gain; S.xp += gain; save(); sfx(ok?'ok':'ko');
+  const last = SES.i===SES.qs.length-1;
+  setHtml($('#fbSlot'), `<div class="fb ${ok?'ok':'ko'}"><div class="fbrow">${blaze(ok)}<div><b>${ok?pick(BRAVO)+(gain?' · +'+gain+' XP':''):'Mauvaise direction'}</b><p>${q.explain(o,ok)}</p></div></div><button class="btn ${ok?'':'red'}" id="pNext">${last?'Voir le résultat':'Continuer'}</button></div>`);
+  const nx = $('#pNext'); nx.onclick = () => { SES.i++; SES.i<SES.qs.length ? drawQ() : endSession(); }; nx.focus({preventScroll:true}); const pb = document.querySelector('.pbody'); pb.scrollTop = pb.scrollHeight; }
+addEventListener('keydown', e => { if($('#play').hidden || !SES) return; const n = $('#pNext'); if(e.key==='Enter' && n){ n.click(); return; } const k = parseInt(e.key,10); const b = document.querySelectorAll('#opts .opt')[k-1]; if(b && !n) b.click(); });
+function endSession(){ const n = SES.qs.length, r = SES.ok/n, st = r>=.9?3:r>=.75?2:r>=.6?1:0; let extra = '';
+  if(SES.level!==undefined){ const was = S.stars[SES.level]||0; if(st>was) S.stars[SES.level] = st; save();
+    extra = st ? (SES.level<8 && !was ? `<p>Étape suivante ouverte : <b>${LV[SES.level+1].n}</b></p>` : '') : '<p class="mut">Il faut 60 % de bonnes réponses pour ouvrir l’étape suivante. Revois les arbres manqués et retente.</p>'; }
+  const win = SES.level!==undefined ? st>0 : r>=.6; if(win){ sfx('win'); leaves(); }
+  endScreen({kick:SES.title, big:SES.ok+' / '+n, starsN:SES.level!==undefined?st:null, xp:SES.xp, extra, missed:SES.missed, again:SES.again}); }
+function endScreen(o){ playShell(`<div class="phead"><button class="icon" id="pQuit" aria-label="Fermer">✕</button><div style="flex:1"></div></div><div class="pbody"><div class="end"><div class="kick">${o.kick}</div><div class="big">${o.big}</div>${o.starsN!==null&&o.starsN!==undefined?stars(o.starsN):''}${o.sub?`<p style="margin:0">${o.sub}</p>`:''}<span class="pill">+${o.xp} XP</span>${o.extra||''}
+   ${o.missed&&o.missed.length?`<div><p class="mut sm" style="margin:6px 0">À revoir :</p><div class="miss">${o.missed.map(id=>`<button data-f="${id}">${img(id,'leaf')}${BYID[id].nom}</button>`).join('')}</div></div>`:''}
+   <div class="row"><button class="btn sec" id="eAgain">Rejouer</button><button class="btn" id="eDone">Continuer</button></div></div></div>`);
+  $('#pQuit').onclick = quitPlay; $('#eDone').onclick = quitPlay; $('#eAgain').onclick = o.again; document.querySelectorAll('.miss button').forEach(b => b.onclick = () => fiche(b.dataset.f)); }
+
+/* ============ mini-jeux ============ */
+function gDuels(){ const pool = seenIds(); const pairs = []; pool.forEach(a => BYID[a].sim.forEach(b => { if(pool.includes(b)) pairs.push([a,b]); }));
+  let ps = shuffle(pairs).slice(0,10); while(ps.length<10 && pool.length>1){ const a = pick(pool); ps.push([a, pick(pool.filter(x=>x!==a))]); }
+  startSession({title:'Duels', qs:ps.map(p=>qDuel(p[0],p[1])), again:gDuels}); }
+function gMystere(){ const pool = seenIds(); startSession({title:'Photo mystère', qs:shuffle(pool).slice(0,8).map(id=>qBlur(id,pool)), again:gMystere, onEnd:1}); }
+function gDetective(){ touchDay(); const pool = seenIds(); const rounds = shuffle(pool).slice(0,5); let ri = 0, total = 0, xp = 0; const missed = [];
+  const round = () => { const id = rounds[ri], sp = BYID[id]; const clues = sp.traits.map(plain).reverse().slice(0,5); let shown = 1, pts = 50; const opts = shuffle([id].concat(distract(id,pool,5)));
+    const draw = (res) => { playShell(`<div class="phead"><button class="icon" id="pQuit" aria-label="Quitter">✕</button><div class="pbar">${rounds.map((_,k)=>`<i class="${k<ri?'ok':k===ri?'cur':''}"></i>`).join('')}</div><span class="combo">${total}</span></div>
+       <div class="pbody"><div><div class="kick">Détective · arbre ${ri+1} sur ${rounds.length}</div><h2 class="prompt">${res?sp.nom:'Qui suis-je ?'}</h2><div class="mut sm">${res?'':'Moins tu demandes d’indices, plus tu marques : '+pts+' points en jeu.'}</div></div>
+       ${res?`<div class="qimg">${img(id,'leaf')}</div>`:''}<ol class="clues">${clues.slice(0,shown).map(c=>`<li>${c}</li>`).join('')}</ol>
+       ${res?'':`<button class="btn sec" id="more" ${shown>=clues.length?'disabled':''}>Un indice de plus (−10 points)</button>`}
+       <div class="opts" id="opts" style="grid-template-columns:1fr 1fr">${opts.map(x=>`<button class="opt ${res&&x===id?'ok':''} ${tried.includes(x)?'ko off':''}" data-id="${x}">${BYID[x].nom}</button>`).join('')}</div></div>
+       ${res?`<div class="fb ${res==='ok'?'ok':'ko'}"><div class="fbrow">${blaze(res==='ok')}<div><b>${res==='ok'?'Démasqué · +'+pts+' points':'Raté pour cette fois'}</b><p>${sp.cle}</p></div></div><button class="btn" id="pNext">${ri<rounds.length-1?'Arbre suivant':'Voir le résultat'}</button></div>`:''}`);
+      $('#pQuit').onclick = quitPlay;
+      if(res){ $('#opts').classList.add('done'); $('#pNext').onclick = () => { ri++; ri<rounds.length ? round() : fin(); }; return; }
+      $('#more').onclick = () => { shown++; pts -= 10; sfx('tap'); draw(); };
+      document.querySelectorAll('#opts .opt').forEach(b => b.onclick = () => { const x = b.dataset.id;
+        if(x===id){ record(id,true); total += pts; const g = Math.round(pts/2.5); xp += g; S.xp += g; save(); sfx('ok'); draw('ok'); }
+        else { tried.push(x); pts -= 20; sfx('ko'); if(pts<=0 || tried.length>=2){ record(id,false); save(); missed.push(id); pts = 0; draw('ko'); } else { if(shown<clues.length) shown++; draw(); } } }); };
+    const tried = []; draw(); };
+  const fin = () => { const best = S.best.detective||0; if(total>best){ S.best.detective = total; save(); } if(total>=150){ sfx('win'); leaves(); }
+    endScreen({kick:'Détective', big:total+' pts', sub:total>best&&best?'Nouveau record':'Record : '+Math.max(best,total)+' points sur 250', xp, missed, again:gDetective}); };
+  round(); }
+function gMemory(){ touchDay(); const pool = seenIds(); const ids = shuffle(pool).slice(0,6); let cards = shuffle(ids.flatMap(id=>[{id,k:'leaf'},{id,k:'fruit'}])); let open = [], got = 0, moves = 0, lock = false;
+  playShell(`<div class="phead"><button class="icon" id="pQuit" aria-label="Quitter">✕</button><div style="flex:1" class="kick">Paires · relie chaque feuille à son fruit</div><span class="combo" id="mv">0</span></div>
+    <div class="pbody"><div class="mem">${cards.map((c,i)=>`<button class="mc" data-i="${i}" aria-label="Carte ${i+1}">${img(c.id,c.k)}<span class="bk"><span class="blaze"><i></i><i></i></span></span><span class="cap">${BYID[c.id].nom}</span></button>`).join('')}</div><p class="mut sm" id="mtxt">Retourne deux cartes : la feuille et le fruit du même arbre.</p></div>`);
+  $('#pQuit').onclick = quitPlay;
+  document.querySelectorAll('.mc').forEach(b => b.onclick = () => { const i = +b.dataset.i; if(lock || b.classList.contains('up')) return; b.classList.add('up'); sfx('tap'); open.push(i); if(open.length<2) return; moves++; $('#mv').textContent = moves;
+    const [a,c] = open.map(j=>cards[j]), els = open.map(j=>document.querySelector(`.mc[data-i="${j}"]`)); open = [];
+    if(a.id===c.id && a.k!==c.k){ els.forEach(e=>e.classList.add('got')); got++; record(a.id,true); S.xp += 8; save(); sfx('ok'); $('#mtxt').textContent = ty(BYID[a.id].nom+' : '+BYID[a.id].cle);
+      if(got===ids.length) setTimeout(()=>{ const best = S.best.memory||0; if(!best || moves<best){ S.best.memory = moves; save(); } sfx('win'); leaves(); endScreen({kick:'Paires', big:moves+' coups', sub:best&&moves>=best?'Record : '+best+' coups':'Nouveau record', xp:got*8, again:gMemory}); }, 900); }
+    else { lock = true; setTimeout(()=>{ els.forEach(e=>e.classList.remove('up')); lock = false; }, 950); } }); }
+function gChrono(){ touchDay(); const pool = seenIds(); let score = 0, left = 60, cur = null, xp = 0; const missed = [];
+  const next = () => { const id = pick(pool.filter(x=>!cur||x!==cur.id)), kind = pick(KINDS), other = distract(id,pool,1)[0]; cur = {id, opts:shuffle([id,other])};
+    setHtml($('#cq'), `<div class="qimg" style="height:min(42vh,340px)">${img(id,kind)}</div><div class="opts" id="opts" style="grid-template-columns:1fr 1fr">${cur.opts.map(x=>`<button class="opt" data-id="${x}">${BYID[x].nom}</button>`).join('')}</div>`);
+    document.querySelectorAll('#opts .opt').forEach(b => b.onclick = () => { if(b.dataset.id===cur.id){ score++; xp += 4; record(cur.id,true); sfx('ok'); } else { left = Math.max(0,left-3); record(cur.id,false); if(!missed.includes(cur.id)) missed.push(cur.id); sfx('ko'); } $('#cs').textContent = score; next(); }); };
+  playShell(`<div class="phead"><button class="icon" id="pQuit" aria-label="Quitter">✕</button><div class="tbar" style="flex:1;height:10px"><i id="tb"></i></div><span class="combo" id="cs">0</span></div><div class="pbody"><div><div class="kick">Chrono · 60 secondes</div><h2 class="prompt">Le plus d’arbres possible</h2><div class="mut sm">Une erreur coûte 3 secondes.</div></div><div id="cq" style="display:grid;gap:12px"></div></div>`);
+  $('#pQuit').onclick = quitPlay; next(); clearInterval(tick);
+  tick = setInterval(()=>{ left -= .1; const tb = $('#tb'); if(tb) tb.style.width = Math.max(0,left/60*100)+'%'; if(left<=0){ clearInterval(tick); const best = S.best.chrono||0; S.xp += xp; if(score>best) S.best.chrono = score; save(); if(score>=10){ sfx('win'); leaves(); }
+    endScreen({kick:'Chrono', big:String(score), sub:score>best&&best?'Nouveau record':'Record : '+Math.max(best,score)+' arbres en 60 secondes', xp, missed:missed.slice(0,6), again:gChrono}); } }, 100); }
+const GAMES = [
+ {id:'rev', n:'Révision du jour', d:'Dix questions sur les arbres que tu risques d’oublier.', c:'#f0b40f', go:startRevision, ic:'<path d="M4 12a8 8 0 0 1 14-5.3L20 9M20 4v5h-5M20 12a8 8 0 0 1-14 5.3L4 15M4 20v-5h5"/>'},
+ {id:'duels', n:'Duels', d:'Deux sosies côte à côte. Lequel est le bon ?', c:'#d6362b', go:gDuels, ic:'<path d="M5 5l9 9M14 5l-9 9M13 15l5 5M17 13l3 3"/>'},
+ {id:'detective', n:'Détective', d:'Un arbre se cache derrière ses indices. Démasque-le au plus vite.', c:'#1b2a21', go:gDetective, ic:'<circle cx="10" cy="10" r="6"/><path d="M20 20l-5.5-5.5"/>'},
+ {id:'mystere', n:'Photo mystère', d:'L’image devient nette peu à peu. Plus tu réponds tôt, plus tu gagnes.', c:'#2a78ad', go:gMystere, ic:'<rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="12" cy="12" r="3.5"/>'},
+ {id:'memory', n:'Paires', d:'Relie chaque feuille à son fruit, de mémoire.', c:'#1f6a3c', go:gMemory, ic:'<rect x="3" y="4" width="8" height="11" rx="2"/><rect x="13" y="9" width="8" height="11" rx="2"/>'},
+ {id:'chrono', n:'Chrono', d:'Soixante secondes, un maximum d’arbres.', c:'#e08a1e', go:gChrono, ic:'<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/>'},
+];
+function vJeux(){ const n = seenIds().length, ok = n>=4; const bests = {detective:S.best.detective?'Record : '+S.best.detective+' pts':'', memory:S.best.memory?'Record : '+S.best.memory+' coups':'', chrono:S.best.chrono?'Record : '+S.best.chrono+' arbres':'', rev:dueIds().length?dueIds().length+' à revoir':''};
+  setHtml($('#view'), `<div class="pad"><h1 class="h">Mini-jeux</h1><p class="sub">${ok?'Ils piochent parmi les '+n+' arbres que tu as déjà découverts sur le sentier.':'Découvre d’abord les quatre arbres de la chênaie, sur le sentier. Les jeux s’ouvrent ensuite.'}</p>
+   <div class="games">${GAMES.map(g=>`<button class="game" data-g="${g.id}" ${ok?'':'disabled'}><span class="gi" style="background:${g.c}"><svg viewBox="0 0 24 24">${g.ic}</svg></span><b>${g.n}</b><p>${g.d}</p><span class="best">${bests[g.id]||''}</span></button>`).join('')}</div></div>`);
+  document.querySelectorAll('.game').forEach(b => b.onclick = () => { sfx('tap'); GAMES.find(g=>g.id===b.dataset.g).go(); }); }
+
+/* ============ herbier ============ */
+let hf = 'all';
+function vHerbier(){ const seen = IDS.filter(i=>S.seen[i]).length, mast = IDS.filter(i=>(S.box[i]||0)>=4).length;
+  const F2 = [['all','Tous'],['foret','Forêt'],['ville','Ville et parcs'],['eau','Bord de l’eau'],['conif','Conifères']];
+  setHtml($('#view'), `<div class="pad"><h1 class="h">Herbier</h1><p class="sub">${seen} arbres découverts sur 32, dont ${mast} bien maîtrisés. Touche une vignette pour ouvrir la fiche.</p>
+   <div class="chips">${F2.map(f=>`<button class="chip" data-f="${f[0]}" aria-pressed="${hf===f[0]}">${f[1]}</button>`).join('')}</div>
+   <div class="grid">${SP.filter(s=>hf==='all'||s.grp.includes(hf)).map(s=>{ const b = S.box[s.id]||0, nw = !S.seen[s.id]; return `<button class="tile ${nw?'new':''}" data-id="${s.id}"><span class="th">${img(s.id,'leaf')}</span><b>${s.nom}</b><span class="pips" aria-label="Maîtrise ${b} sur 5">${[1,2,3,4,5].map(k=>`<i class="${k<=b?'on':''}"></i>`).join('')}</span></button>`; }).join('')}</div></div>`);
+  document.querySelectorAll('.chip[data-f]').forEach(b => b.onclick = () => { hf = b.dataset.f; vHerbier(); });
+  document.querySelectorAll('.tile').forEach(b => b.onclick = () => { sfx('tap'); fiche(b.dataset.id); }); }
+function sheet(h){ const s = $('#sheet'); s.hidden = false; setHtml(s, `<div class="sheet" role="dialog" aria-modal="true">${h}</div>`); s.querySelectorAll('[data-close]').forEach(b => b.onclick = closeSheet); s.onclick = e => { if(e.target===s) closeSheet(); }; }
+function closeSheet(){ $('#sheet').hidden = true; $('#sheet').innerHTML = ''; }
+addEventListener('keydown', e => { if(e.key==='Escape' && !$('#sheet').hidden) closeSheet(); });
+function fiche(id, draw){ const sp = BYID[id], i = IDS.indexOf(id), ph = PH[id];
+  const pics = draw ? [['leaf',leafSvg(sp)],['fruit',FRUITS[sp.fruit]()],['bark',barkSvg(sp,100+i)],['tree',silhouette(sp.sil,200+i)]] : ['leaf','fruit','bark','tree'].map(k=>[k,img(id,k)]);
+  sheet(`<div class="shead"><div><h2>${sp.nom}</h2><div class="lat">${sp.latin} · ${sp.fam} · jusqu’à ${sp.sil.h} m</div></div><button class="icon" data-close aria-label="Fermer">✕</button></div>
+   <div class="quad">${pics.map(p=>`<figure>${p[1]}<figcaption>${KLAB[p[0]]}</figcaption></figure>`).join('')}</div>
+   <div class="chips" style="margin-top:10px"><button class="chip" id="fPh" aria-pressed="${!draw}">Photos</button><button class="chip" id="fDr" aria-pressed="${!!draw}">Schémas</button></div>
+   <div class="cle">${blaze(true)}<span>${sp.cle}</span></div>
+   <h3>Les critères</h3><ul>${sp.traits.map(t=>`<li>${t}</li>`).join('')}</ul>
+   <h3>Près de chez toi</h3><p>${sp.ou}</p>
+   <h3>Ne pas confondre</h3><p>${sp.conf}</p>
+   <h3>Pour retenir</h3><div class="memo">${sp.memo}</div>
+   <p class="cred">Photos Wikimedia Commons : ${['leaf','fruit','bark','tree'].map(k=>`${KLAB[k].toLowerCase()}, <a href="${ph[k].page}" target="_blank" rel="noopener">${esc(ph[k].author)}</a> (${esc(ph[k].license)})`).join(' · ')}. <a href="https://fr.wikipedia.org/wiki/${sp.wiki}" target="_blank" rel="noopener">Page Wikipédia</a></p>`);
+  $('#fPh').onclick = () => fiche(id,false); $('#fDr').onclick = () => fiche(id,true); }
+
+/* ============ terrain ============ */
+let keyHist = ['start'];
+function seasonTxt(){ const m = new Date().getMonth();
+  if([8,9,10].includes(m)) return ['Automne : fruits et couleurs',['Au sol : glands (avaient-ils une queue ?), châtaignes, faînes, marrons. Le meilleur moment pour séparer les deux chênes.','Le charme et le bouleau jaunissent, le hêtre roussit, le merisier vire au rouge-orange. Le frêne et l’aulne perdent leurs feuilles encore vertes.','Le ginkgo devient jaune d’or, le cyprès chauve roussit avant de se dégarnir.']];
+  if([11,0,1].includes(m)) return ['Hiver : écorces et bourgeons',['Bourgeons noirs du frêne, cigares du hêtre, gros bourgeons collants du marronnier.','Fruits restés accrochés : boules du platane, petits cônes de l’aulne, samares du frêne.','Les jeunes hêtres, charmes et chênes gardent leurs feuilles sèches.']];
+  if([2,3].includes(m)) return ['Printemps : les floraisons',['Chatons de l’aulne, du bouleau, du charme et du noisetier.','En avril, le merisier fleurit tout en blanc dans les lisières.','Fin avril, les chandelles blanches du marronnier.']];
+  return ['Été : toutes les feuilles sont là',['C’est le moment d’utiliser la clé ci-dessus.','Juin et juillet : le parfum des tilleuls dans les avenues.','Mai et juin : grappes blanches du robinier, fleurs en tulipe du tulipier.']]; }
+function vTerrain(){ const se = seasonTxt();
+  setHtml($('#view'), `<div class="pad"><h1 class="h">Sur le terrain</h1><p class="sub">Un arbre devant toi ? Prends une feuille et réponds aux questions.</p>
+   <div class="box" id="keyBox"></div>
+   <div class="box"><h2>${se[0]}</h2><ul style="margin:0;padding-left:1.1em">${se[1].map(x=>`<li>${x}</li>`).join('')}</ul></div>
+   <div class="box"><h2>Sans feuilles : les bourgeons</h2><p class="mut sm" style="margin:0 0 8px">Face à face (frêne, érables, marronnier) ou décalés (tous les autres) ?</p><div class="buds">${BUDS.map(b=>`<div>${budSvg(b[0])}<b>${b[1]}</b>${b[2]}</div>`).join('')}</div></div>
+   <div class="box"><h2>Réglages</h2><p class="mut sm">${cloudOn?'Ta progression est enregistrée sur ton compte : tu la retrouves sur ton téléphone comme sur ton ordinateur.':'Ta progression est enregistrée dans ce navigateur.'}</p>
+     <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn sec" id="setAll">${S.all?'Reverrouiller le sentier':'Tout débloquer'}</button><button class="btn sec" id="setReset">Recommencer à zéro</button></div><p class="mut sm" id="setMsg" style="margin:8px 0 0"></p></div>
+   <div class="box"><h2>Sources</h2>  <ol class="src">
+    <li>ONF, <a href="https://onf.fr/++amgt++A000233Y/++zfiles++5c3536bc">Aménagement de la forêt domaniale de Rambouillet, fiche de synthèse</a> (2020)</li>
+    <li>ONF, <a href="https://onf.fr/++amgt++A038104N/++zfiles++6745e6bc">Aménagement de la forêt de Marly, fiche de synthèse</a> (2025)</li>
+    <li>ONF, <a href="https://appliforet.onf.fr/++amgt++A000352N/++zfiles++5c353880">Aménagement de la forêt domaniale de Fausses-Reposes, fiche de synthèse</a> (2024) et <a href="https://onf.fr/++amgt++A000352N/++zfiles++43a75299">document d’aménagement 2005-2024</a></li>
+    <li>DRIEAT Île-de-France, <a href="https://www.drieat.ile-de-france.developpement-durable.gouv.fr/IMG/pdf/2025_fiche_natura_2000_zsc_1100796_foret_rambouillet.pdf">Fiche Natura 2000 « Forêt de Rambouillet »</a> (2025)</li>
+    <li>DRIAAF Île-de-France, <a href="https://driaaf.ile-de-france.agriculture.gouv.fr/IMG/pdf/473_pdf_foret_francilienne_DRIAFIledeFrance07_cle0ebbaa_cle06d3cf.pdf">La forêt francilienne</a></li>
+    <li>Inventaire des jardins remarquables, <a href="https://europeangardens.eu/inventories/fr/inventaires/Ile-de-France/Yvelines/FRIEJP_INVYvelines.xml/ead/FRIEJP_INVYvelines_J404.pdf">Parc du château de Versailles</a> ; EPV, <a href="https://europeanroyalresidences.eu/arre-cntnt/uploads/2024/09/7_C.-Peignart-_Séminaire-EPICO_2024-04-04_Chantilly.pdf">Les arbres d’alignement comme observatoire</a> (2024) ; Château de Versailles, <a href="https://en.chateauversailles.fr/news/patronage-news/adopt-linden-tree-allee-accroissement">Allée de l’Accroissement</a></li>
+    <li>ONF, <a href="https://valparisis.fr/sites/valparisis/files/document/dp_onf_bilan-plantations-2021_2022_idf_decembre-2022.pdf">Bilan des plantations 2021-2022 en Île-de-France</a> (2022)</li>
+    <li>Ducousso et al., INRA, <a href="https://hal.inrae.fr/hal-02719022v1/file/16303_20070625115915969_1.pdf">critères de distinction chêne sessile / pédonculé</a> (pédoncule, pétiole, oreillettes)</li>
+    <li>Office de tourisme de Rambouillet, <a href="https://www.rambouillet-tourisme.fr/wp-content/uploads/2022/05/GAMBAISEUIL-GEOTREK-APIED-11km.3h-Foret-vallonnee-et-arbres-remarquables.pdf">Forêt vallonnée et arbres remarquables (Gambaiseuil)</a> et <a href="https://www.rambouillet-tourisme.fr/wp-content/uploads/2022/03/Itineraire-Les-fabuleux-tresors-du-parc-de-Rambouillet.pdf">Les trésors du parc de Rambouillet</a></li>
+    <li>L’Info durable / AFP, <a href="https://www.linfodurable.fr/versailles-celebre-ses-arbres-admirables-memoire-vivante-de-lhistoire-14192">Versailles célèbre ses « arbres admirables »</a> ; Sortir à Paris, <a href="https://www.sortiraparis.com/en/what-to-visit-in-paris/walks/articles/199183-the-admirable-trees-of-the-versailles-estate">Les arbres admirables du domaine de Versailles</a></li>
+    <li>Ministère de l’Agriculture, CNPF et INRAE, <a href="https://agriculture.gouv.fr/telecharger/92179">fiche essence chêne pubescent</a></li>
+    <li>Wikipédia, <a href="https://fr.wikipedia.org/wiki/Tulipier_de_Virginie">Tulipier de Virginie</a> (tulipiers du Petit Trianon)</li>
+    <li>Service public de Wallonie, <a href="https://environnement.wallonie.be/files/Images/Loisirs/Ev%c3%a8nements/Semaine%20de%20l'arbre/Archives/2015-charme-fr.pdf">Le charme</a> (Semaine de l’arbre, 2015)</li>
+  </ol><p class="mut sm">Les 128 photos viennent de Wikimedia Commons, sous licences libres. L’auteur et la licence de chacune figurent au bas de chaque fiche de l’herbier.</p></div></div>`);
+  drawKey();
+  $('#setAll').onclick = () => { S.all = !S.all; save(); vTerrain(); };
+  let armed = false; $('#setReset').onclick = () => { if(!armed){ armed = true; $('#setMsg').textContent = 'Touche encore une fois pour effacer toute ta progression.'; $('#setReset').textContent = 'Oui, tout effacer'; return; } const snd = S.sound; S = fresh(); S.sound = snd; save(); vTerrain(); }; }
+function drawKey(){ const cur = keyHist[keyHist.length-1], el = $('#keyBox'); const back = keyHist.length>1 ? `<div style="margin-top:10px;display:flex;gap:16px"><button class="lnk" id="kBack">Revenir</button><button class="lnk" id="kReset">Recommencer</button></div>` : '';
+  if(cur[0]==='='){ const sp = BYID[cur.slice(1)];
+    setHtml(el, `<div class="kick">C’est probablement</div><h2 style="font-size:1.5rem">${sp.nom}</h2><div class="quad" style="margin:10px 0">${['leaf','fruit','bark','tree'].map(k=>`<figure>${img(sp.id,k)}<figcaption>${KLAB[k]}</figcaption></figure>`).join('')}</div><div class="cle">${blaze(true)}<span>${sp.cle}</span></div><button class="btn" id="kFiche">Ouvrir la fiche</button>${back}`);
+    $('#kFiche').onclick = () => fiche(sp.id); }
+  else { const n = KEY[cur]; setHtml(el, `<div class="kick">La clé · question ${keyHist.length}</div><div class="keyq">${n.q}</div><div class="opts">${n.o.map(o=>`<button class="opt" data-g="${o[1]}">${o[0]}</button>`).join('')}</div>${back}`);
+    el.querySelectorAll('.opt').forEach(b => b.onclick = () => { sfx('tap'); keyHist.push(b.dataset.g); drawKey(); }); }
+  const kb = $('#kBack'); if(kb) kb.onclick = () => { keyHist.pop(); drawKey(); }; const kr = $('#kReset'); if(kr) kr.onclick = () => { keyHist = ['start']; drawKey(); }; }
+
+hud(); route();
+</script>
+</body>
+</html>
